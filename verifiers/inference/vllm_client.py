@@ -61,12 +61,20 @@ class VLLMClient:
     """
 
     def __init__(
-        self, host: str = "0.0.0.0", server_port: int = 8000, group_port: int = 51216, connection_timeout: float = 0.0
+        self,
+        host: str = "0.0.0.0",
+        server_port: int = 8000,
+        group_port: int = 51216,
+        connection_timeout: float = 0.0,
     ):
         if not is_requests_available():
-            raise ImportError("requests is not installed. Please install it with `pip install requests`.")
+            raise ImportError(
+                "requests is not installed. Please install it with `pip install requests`."
+            )
         if not is_vllm_available():
-            raise ImportError("vLLM is not installed. Please install it with `pip install vllm`.")
+            raise ImportError(
+                "vLLM is not installed. Please install it with `pip install vllm`."
+            )
 
         self.session = requests.Session()
         self.host = host
@@ -89,13 +97,13 @@ class VLLMClient:
         start_time = time.time()  # Record the start time
 
         while True:
-            try: 
-                response = requests.get(url) # type: ignore
-            except requests.exceptions.RequestException as exc: # type: ignore
+            try:
+                response = requests.get(url)  # type: ignore
+            except requests.exceptions.RequestException as exc:  # type: ignore
                 # Check if the total timeout duration has passed
                 elapsed_time = time.time() - start_time
                 if elapsed_time >= total_timeout:
-                    raise ConnectionError( # type: ignore
+                    raise ConnectionError(  # type: ignore
                         f"The vLLM server can't be reached at {self.host}:{self.server_port} after {total_timeout} "
                         "seconds. Make sure the server is running by running `trl vllm-serve`."
                     ) from exc
@@ -105,7 +113,9 @@ class VLLMClient:
                     return None
 
             # Retry logic: wait before trying again
-            logger.info(f"Server is not up yet. Retrying in {retry_interval} seconds...")
+            logger.info(
+                f"Server is not up yet. Retrying in {retry_interval} seconds..."
+            )
             time.sleep(retry_interval)
 
     def generate(
@@ -215,7 +225,7 @@ class VLLMClient:
         Initializes the weight update group in a distributed setup for model synchronization.
         """
         # Get the world size from the server
-        url = f"http://{self.host}:{self.server_port}/get_world_size/"
+        url = f"http://[{self.host}]:{self.server_port}/get_world_size/"
         response = requests.get(url)
         if response.status_code == 200:
             vllm_world_size = response.json()["world_size"]
@@ -226,9 +236,12 @@ class VLLMClient:
         self.rank = vllm_world_size  # the client's rank is the last process
 
         # Initialize weight update group
-        url = f"http://{self.host}:{self.server_port}/init_communicator/"
+        url = f"http://[{self.host}]:{self.server_port}/init_communicator/"
         # In the server side, the host is set to 0.0.0.0
-        response = self.session.post(url, json={"host": "0.0.0.0", "port": self.group_port, "world_size": world_size})
+        response = self.session.post(
+            url,
+            json={"host": "0.0.0.0", "port": self.group_port, "world_size": world_size},
+        )
         if response.status_code != 200:
             raise Exception(f"Request failed: {response.status_code}, {response.text}")
 
@@ -238,7 +251,9 @@ class VLLMClient:
         time.sleep(0.1)
 
         # Set up the communication group for weight broadcasting
-        pg = StatelessProcessGroup.create(host=self.host, port=self.group_port, rank=self.rank, world_size=world_size)
+        pg = StatelessProcessGroup.create(
+            host=self.host, port=self.group_port, rank=self.rank, world_size=world_size
+        )
         self.pynccl_comm = PyNcclCommunicator(pg, device=0)
 
         # When the client object is deleted, close the weight update group
@@ -255,8 +270,10 @@ class VLLMClient:
                 Tensor containing the updated weights.
         """
         dtype, shape = str(weights.dtype), tuple(weights.shape)
-        url = f"http://{self.host}:{self.server_port}/update_named_param/"
-        response = self.session.post(url, json={"name": name, "dtype": dtype, "shape": shape})
+        url = f"http://[{self.host}]:{self.server_port}/update_named_param/"
+        response = self.session.post(
+            url, json={"name": name, "dtype": dtype, "shape": shape}
+        )
         if response.status_code != 200:
             raise Exception(f"Request failed: {response.status_code}, {response.text}")
 
@@ -280,7 +297,7 @@ class VLLMClient:
         """
         Resets the prefix cache for the model.
         """
-        url = f"http://{self.host}:{self.server_port}/reset_prefix_cache/"
+        url = f"http://[{self.host}]:{self.server_port}/reset_prefix_cache/"
         response = self.session.post(url)
         if response.status_code != 200:
             raise Exception(f"Request failed: {response.status_code}, {response.text}")
@@ -289,7 +306,7 @@ class VLLMClient:
         """
         Closes the weight update group and cleans up the communication group.
         """
-        url = f"http://{self.host}:{self.server_port}/close_communicator/"
+        url = f"http://[{self.host}]:{self.server_port}/close_communicator/"
 
         try:
             response = self.session.post(url)
@@ -298,4 +315,6 @@ class VLLMClient:
             pass
         else:
             if response.status_code != 200:
-                raise Exception(f"Request failed: {response.status_code}, {response.text}")
+                raise Exception(
+                    f"Request failed: {response.status_code}, {response.text}"
+                )
