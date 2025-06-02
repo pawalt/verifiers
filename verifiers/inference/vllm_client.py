@@ -240,7 +240,7 @@ class VLLMClient:
         # In the server side, the host is set to 0.0.0.0
         response = self.session.post(
             url,
-            json={"host": "0.0.0.0", "port": self.group_port, "world_size": world_size},
+            json={"host": "::", "port": self.group_port, "world_size": world_size},
         )
         if response.status_code != 200:
             raise Exception(f"Request failed: {response.status_code}, {response.text}")
