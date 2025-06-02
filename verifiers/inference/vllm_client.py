@@ -147,7 +147,7 @@ class VLLMClient:
             `list[list[int]]`:
                 List of lists of token IDs representing the model-generated completions for each prompt.
         """
-        url = f"http://{self.host}:{self.server_port}/generate/"
+        url = f"http://[{self.host}]:{self.server_port}/generate/"
         response = self.session.post(
             url,
             json={
