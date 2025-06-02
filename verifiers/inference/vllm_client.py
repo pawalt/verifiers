@@ -85,7 +85,7 @@ class VLLMClient:
             total_timeout (`float`, *optional*, defaults to `0.0`):
                 Total timeout duration in seconds.
         """
-        url = f"http://{self.host}:{self.server_port}/health/"
+        url = f"http://[{self.host}]:{self.server_port}/health/"
         start_time = time.time()  # Record the start time
 
         while True:
@@ -186,7 +186,7 @@ class VLLMClient:
         """
         Generates completions for the provided prompts.
         """
-        url = f"http://{self.host}:{self.server_port}/chat/"
+        url = f"http://[{self.host}]:{self.server_port}/chat/"
         response = self.session.post(
             url,
             json={
